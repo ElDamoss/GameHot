@@ -13,7 +13,7 @@
         .active { display: block; animation: fadeIn 0.4s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        input { width: 80%; padding: 12px; border-radius: 10px; border: none; margin-bottom: 10px; font-size: 1rem; outline: none; background: rgba(255,255,255,0.9); }
+        input { width: 80%; padding: 12px; border-radius: 10px; border: none; margin-bottom: 10px; font-size: 1rem; outline: none; background: rgba(255,255,255,0.9); color: #333; }
         button { cursor: pointer; border: none; border-radius: 12px; font-weight: bold; transition: 0.3s; text-transform: uppercase; }
         
         .btn-main { background: var(--accent); color: #000; padding: 12px 25px; font-size: 1rem; width: 100%; margin-top: 10px; }
@@ -22,147 +22,201 @@
         #player-list { list-style: none; padding: 0; margin: 15px 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
         .player-tag { background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.2); }
         
-        #display-card { 
-        font-size: 1.4rem; 
-        min-height: 140px; 
-        margin: 20px 0; 
-        display: block; /* Important : on enlève le 'flex' qui créait le bug */
-        text-align: center; 
-        color: #fff; 
-        line-height: 1.8; /* Donne un peu d'air entre les lignes */
-        padding: 10px;
-}
+        #display-card { font-size: 1.4rem; min-height: 140px; margin: 20px 0; display: block; text-align: center; color: #fff; line-height: 1.8; padding: 10px; }
+        #display-card b { color: var(--accent); display: inline-block; padding: 0 5px; }
 
-/* Ajoute ça juste en dessous pour que le nom soit bien intégré */
-#display-card b {
-    color: var(--accent);
-    display: inline-block;
-    padding: 0 5px;
-}
         .turn-info { color: var(--accent); font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
-        
         .game-btns { display: flex; gap: 15px; }
         .game-btns button { flex: 1; padding: 20px; background: transparent; border: 2px solid white; color: white; font-size: 1rem; }
-        .game-btns button:active { background: white; color: black; }
-
         #next-btn { background: #2ecc71; color: white; margin-top: 10px; display: none; padding: 15px; width: 100%; font-size: 1.1rem; }
-        
         .reset-link { display: block; margin-top: 25px; color: rgba(255,255,255,0.4); font-size: 0.8rem; text-decoration: underline; background: none; border: none; width: 100%; }
-        .chili-icon { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+        
+        /* Modal Rejoindre */
+        #join-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,12,41,0.95); z-index:100; padding-top: 50px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="phase-reg" class="phase active">
-        <span class="chili-icon">🌶️</span>
-        <h2>Action ou Vérité Hot</h2>
-        <input type="text" id="name-input" placeholder="Prénom du joueur...">
-        <button class="btn-main" onclick="addPlayer()">Ajouter</button>
+    <div id="phase-intro" class="phase active">
+        <span style="font-size: 3rem;">🌶️</span>
+        <h2>Flashpoint Online</h2>
+        <button class="btn-main" onclick="showCreate()">CRÉER UNE PARTIE</button>
+        <button class="btn-main" style="background:#34495e; color:white;" onclick="showJoin()">REJOINDRE</button>
+    </div>
+
+    <div id="phase-lobby" class="phase">
+        <h2 id="room-display" style="color:var(--accent)">CODE : ----</h2>
+        <p>Joueurs connectés :</p>
         <ul id="player-list"></ul>
-        <button id="start-btn" class="btn-main" style="display:none; background: #2ecc71;" onclick="goToTemp()">Suivant (Température)</button>
+        <button id="start-btn" class="btn-main" style="display:none; background: #2ecc71;" onclick="goToTemp()">Choisir la température</button>
     </div>
 
     <div id="phase-temp" class="phase">
-        <h2>Choisissez l'ambiance</h2>
+        <h2>Température ?</h2>
         <button class="btn-temp" style="background:var(--chill)" onclick="startGame('chill')">❄️ Chill</button>
         <button class="btn-temp" style="background:var(--spicy)" onclick="startGame('spicy')">🔥 Spicy</button>
         <button class="btn-temp" style="background:var(--xrated)" onclick="startGame('xrated')">🔞 X-Rated</button>
-        <button class="reset-link" onclick="location.reload()">⬅️ Retour à l'accueil</button>
     </div>
 
     <div id="phase-game" class="phase">
         <div id="turn-name" class="turn-info"></div>
-        
         <div id="display-card">Préparez-vous...</div>
-        
         <div id="choice-buttons" class="game-btns">
-            <button onclick="play('truth')">VÉRITÉ</button>
-            <button onclick="play('dare')">ACTION</button>
+            <button onclick="playSync('truth')">VÉRITÉ</button>
+            <button onclick="playSync('dare')">ACTION</button>
         </div>
-
-        <button id="next-btn" onclick="prepareNextTurn()">SUIVANT ⏭️</button>
-
-        <button class="reset-link" onclick="goToTemp()">🔥 Changer de température (Début)</button>
+        <button id="next-btn" onclick="nextTurnSync()">SUIVANT ⏭️</button>
     </div>
 </div>
 
-<script>
+<div id="join-modal">
+    <div style="padding:30px; text-align:center;">
+        <h3>Rejoindre un salon</h3>
+        <input type="text" id="join-code" placeholder="CODE DU SALON" style="text-transform:uppercase;">
+        <input type="text" id="join-name" placeholder="Ton prénom">
+        <button class="btn-main" onclick="joinGame()">VALIDER</button>
+        <button onclick="document.getElementById('join-modal').style.display='none'" class="reset-link">Annuler</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyC43L82InbAIjjZCLjyDjj7vNXcuZ6FURU",
+        authDomain: "hotgame-477a8.firebaseapp.com",
+        databaseURL: "https://hotgame-477a8-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "hotgame-477a8",
+        storageBucket: "hotgame-477a8.firebasestorage.app",
+        messagingSenderId: "136539996898",
+        appId: "1:136539996898:web:c5fbe02545d5cfc90614bb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let roomID = "";
+    let isHost = false;
     let players = [];
-    let currentLevel = "";
-    let currentPlayerIndex = 0;
+    let myName = "";
 
     const database = {
         chill: {
-            truth: ["Quelle est ta qualité la plus sexy ?", "Ton premier baiser, c'était où ?", "Qui est ton crush célèbre ?"],
-            dare: ["Fais un massage des mains à [X].", "Fais un compliment osé à [X].", "Enlève tes chaussures."]
+            truth: ["Qualité la plus sexy ?", "Premier baiser c'était où ?", "Ton crush célèbre ?"],
+            dare: ["Massage des mains à [X].", "Compliment osé à [X].", "Enlève tes chaussures."]
         },
         spicy: {
-            truth: ["Où aimes-tu être embrassé(e) ?", "Quelle tenue trouves-tu irrésistible ?", "As-tu déjà simulé ?"],
-            dare: ["Embrasse le cou de [X] pendant 10s.", "Enlève un vêtement.", "Mange un aliment de façon sensuelle."]
+            truth: ["Où aimes-tu être embrassé(e) ?", "Tenue irrésistible ?", "As-tu déjà simulé ?"],
+            dare: ["Embrasse le cou de [X].", "Enlève un vêtement.", "Mange sensuellement."]
         },
         xrated: {
-            truth: ["Ton fantasme le plus inavouable ?", "Ta position préférée ?", "Le lieu le plus insolite où tu l'as fait ?"],
-            dare: ["Isole-toi avec [X] et envoyez-vous une nude.", "Fais un lapdance à [X].", "Lèche le lobe de l'oreille de [X].", "Retire un vêtement à [X] avec les dents."]
+            truth: ["Fantasme inavouable ?", "Ta position préférée ?", "Lieu le plus insolite ?"],
+            dare: ["Isole-toi avec [X] (1 min).", "Lapdance à [X].", "Lèche l'oreille de [X]."]
         }
     };
 
-    function addPlayer() {
-        const input = document.getElementById('name-input');
-        const name = input.value.trim();
-        if (name !== "") {
-            players.push(name);
-            const li = document.createElement('li');
-            li.className = 'player-tag';
-            li.innerText = name;
-            document.getElementById('player-list').appendChild(li);
-            input.value = "";
-            if (players.length >= 2) document.getElementById('start-btn').style.display = "block";
-        }
-    }
+    window.showCreate = async function() {
+        roomID = Math.random().toString(36).substring(2, 6).toUpperCase();
+        isHost = true;
+        myName = prompt("Ton prénom :");
+        if(!myName) return;
+        await set(ref(db, 'rooms/' + roomID), {
+            status: "lobby",
+            players: { [myName]: true },
+            currentText: "En attente...",
+            turnIndex: 0
+        });
+        setupLobby(roomID);
+    };
 
-    function goToTemp() {
-        // Masque tout et affiche la phase de température
+    window.showJoin = () => document.getElementById('join-modal').style.display = 'block';
+
+    window.joinGame = async function() {
+        const code = document.getElementById('join-code').value.toUpperCase();
+        myName = document.getElementById('join-name').value.trim();
+        if(code && myName) {
+            const snapshot = await get(ref(db, 'rooms/' + code));
+            if(snapshot.exists()) {
+                await update(ref(db, `rooms/${code}/players`), { [myName]: true });
+                roomID = code;
+                setupLobby(code);
+                document.getElementById('join-modal').style.display = 'none';
+            } else { alert("Code inexistant !"); }
+        }
+    };
+
+    function setupLobby(code) {
         document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
-        document.getElementById('phase-temp').classList.add('active');
+        document.getElementById('phase-lobby').classList.add('active');
+        document.getElementById('room-display').innerText = "CODE : " + code;
+
+        onValue(ref(db, 'rooms/' + code), (snapshot) => {
+            const data = snapshot.val();
+            if(!data) return;
+            players = Object.keys(data.players);
+            document.getElementById('player-list').innerHTML = players.map(p => `<li class="player-tag">${p}</li>`).join('');
+            
+            if(isHost && players.length >= 2) document.getElementById('start-btn').style.display = 'block';
+
+            if(data.status === "temp") {
+                showPhase('phase-temp');
+            } else if(data.status === "playing") {
+                showPhase('phase-game');
+                document.getElementById('display-card').innerHTML = data.currentText;
+                document.getElementById('turn-name').innerText = "Tour de : " + players[data.turnIndex];
+                
+                // Gestion affichage boutons
+                if(data.currentText.includes("Alors...")) {
+                    document.getElementById('choice-buttons').style.display = "flex";
+                    document.getElementById('next-btn').style.display = "none";
+                } else {
+                    document.getElementById('choice-buttons').style.display = "none";
+                    if(isHost) document.getElementById('next-btn').style.display = "block";
+                }
+            }
+        });
     }
 
-    function startGame(level) {
-        currentLevel = level;
-        document.getElementById('phase-temp').classList.remove('active');
-        document.getElementById('phase-game').classList.add('active');
-        displayTurnPrompt();
+    function showPhase(id) {
+        document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
     }
 
-    function displayTurnPrompt() {
-        const name = players[currentPlayerIndex];
-        document.getElementById('turn-name').innerText = "C'est au tour de " + name;
-        document.getElementById('display-card').innerHTML = "Alors... <br>Action ou Vérité ?";
-        document.getElementById('choice-buttons').style.display = "flex";
-        document.getElementById('next-btn').style.display = "none";
-    }
+    window.goToTemp = () => update(ref(db, 'rooms/' + roomID), { status: "temp" });
 
-    function play(type) {
-        const pool = database[currentLevel][type];
+    window.startGame = (level) => {
+        update(ref(db, 'rooms/' + roomID), { 
+            status: "playing", 
+            level: level,
+            currentText: "Alors... <br>Action ou Vérité ?"
+        });
+    };
+
+    window.playSync = async function(type) {
+        if(!isHost) return;
+        const snap = await get(ref(db, 'rooms/' + roomID));
+        const data = snap.val();
+        const pool = database[data.level][type];
         let text = pool[Math.floor(Math.random() * pool.length)];
-        
+
         if (text.includes("[X]")) {
-            let otherPlayers = players.filter((_, i) => i !== currentPlayerIndex);
-            let target = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
-            text = text.replace("[X]", `<b style="color:var(--accent)">${target}</b>`);
+            let others = players.filter(p => p !== players[data.turnIndex]);
+            let target = others[Math.floor(Math.random() * others.length)];
+            text = text.replace("[X]", `<b>${target}</b>`);
         }
+        update(ref(db, 'rooms/' + roomID), { currentText: text });
+    };
 
-        document.getElementById('display-card').innerHTML = text;
-        document.getElementById('choice-buttons').style.display = "none";
-        document.getElementById('next-btn').style.display = "block";
-    }
-
-    function prepareNextTurn() {
-        // Alterne le joueur et revient à l'écran de choix
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-        displayTurnPrompt();
-    }
+    window.nextTurnSync = async function() {
+        const snap = await get(ref(db, 'rooms/' + roomID));
+        const newIndex = (snap.val().turnIndex + 1) % players.length;
+        update(ref(db, 'rooms/' + roomID), { 
+            turnIndex: newIndex, 
+            currentText: "Alors... <br>Action ou Vérité ?" 
+        });
+    };
 </script>
-
 </body>
 </html>
